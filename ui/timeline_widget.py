@@ -8,7 +8,7 @@ class TimelineWidget(QWidget):
         super().__init__(parent)
 
         self.min_year = 862
-        self.max_year = 2024
+        self.max_year = 2020
 
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet("""

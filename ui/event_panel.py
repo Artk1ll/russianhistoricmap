@@ -5,7 +5,7 @@ class EventPanel(QWidget):
     def __init__(self, events_by_year: dict, parent=None):
         super().__init__(parent)
         self.events_by_year = events_by_year
-
+        self.events_by_year = {}
         self.setFixedWidth(300)
         self.setStyleSheet("""
             background-color: rgba(30, 30, 30, 200);
@@ -33,3 +33,11 @@ class EventPanel(QWidget):
             self.label.setText(formatted)
         else:
             self.label.setText("Нет данных о событиях")
+
+    def show_details_by_id(self, event_id):
+        for year_events in self.events_by_year.values():
+            for event in year_events:
+                if event["id"] == event_id:
+                    self.details_widget.setText(event["details"])
+                    self.stack.setCurrentIndex(1)
+                    return

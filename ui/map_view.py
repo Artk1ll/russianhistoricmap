@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsPolygonItem
+from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsPolygonItem, QGraphicsEllipseItem
 from PyQt5.QtGui import QPixmap, QPolygonF, QPen, QPainter, QBrush, QColor
-from PyQt5.QtCore import Qt, QPointF
+from PyQt5.QtCore import Qt, QPointF, pyqtSignal
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
@@ -21,11 +21,14 @@ class HoverablePolygonItem(QGraphicsPolygonItem):
         super().hoverLeaveEvent(event)
 
 class MapView(QGraphicsView):
+    markerClicked = pyqtSignal(str)
     def __init__(self, borders_by_year):
         super().__init__()
 
         self.raw_borders_by_year = borders_by_year
         self.original_size = (1920, 1080)
+
+        self.points = []
 
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
@@ -143,3 +146,30 @@ class MapView(QGraphicsView):
     def wheelEvent(self, event):
         # Отключить реакцию на колесо мыши (чтобы карта не прокручивалась)
         event.ignore()
+
+    def show_points_for_year(self, year, points):
+        self.clear_points()
+        for point in points:
+            if point["year"] == year:
+                self.add_interest_point(point["coordinates"], point["id"])
+
+    def clear_points(self):
+        for item in self.points:
+            self.scene.removeItem(item)
+        self.points.clear()
+
+    def add_interest_point(self, coordinates, event_id):
+        x, y = self.scale_coords([coordinates])[0]
+        radius = 8
+        circle = QGraphicsEllipseItem(x - radius / 2, y - radius / 2, radius, radius)
+        circle.setBrush(QBrush(Qt.red))
+        circle.setPen(QPen(Qt.black))
+        circle.setZValue(10)
+        circle.setData(0, event_id)
+
+        def mousePressEvent(event, eid=event_id):
+            self.markerClicked.emit(eid)
+
+        circle.mousePressEvent = mousePressEvent
+        self.scene.addItem(circle)
+        self.points.append(circle)
