@@ -4,7 +4,6 @@ from ui.map_view import MapView
 from ui.event_panel import EventPanel
 from data.loader import load_borders, load_events, load_points_of_interest
 
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -12,22 +11,20 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Историческая карта России")
         self.setGeometry(100, 100, 1280, 800)
 
+        # Загрузка данных
         self.borders_by_year = load_borders()
         self.events_by_year = load_events()
         self.points_of_interest = load_points_of_interest()
 
+        # Центральный виджет и layout
         self.central = QWidget()
         self.setCentralWidget(self.central)
-
         layout = QVBoxLayout(self.central)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Сначала создаём map_view, чтобы ниже подключать сигнал
+        # Карта
         self.map_view = MapView(self.borders_by_year)
         layout.addWidget(self.map_view)
-
-        # Подключаем сигнал клика по точке интереса
-        self.map_view.markerClicked.connect(self.on_marker_clicked)
 
         # Таймлайн
         self.timeline = TimelineWidget(self.map_view)
@@ -35,24 +32,22 @@ class MainWindow(QMainWindow):
         self.timeline.setFixedWidth(800)
         self.timeline.show()
 
-        self.timeline.yearChanged.connect(self.map_view.update_year)
-        self.timeline.yearChanged.connect(self.update_points_for_year)
-
         # Панель событий
         self.event_panel = EventPanel(self.events_by_year, self)
         self.event_panel.setFixedWidth(300)
-        self.event_panel.setFixedHeight(160)
+        self.event_panel.setFixedHeight(180)
         self.event_panel.show()
 
-        self.timeline.yearChanged.connect(self.event_panel.update_event)
+        # Сигналы
+        self.timeline.yearChanged.connect(self.update_year_view)
+        self.map_view.markerClicked.connect(self.on_marker_clicked)
 
-        # Первичная отрисовка
-        current_year = self.timeline.value()
-        self.map_view.update_year(current_year)
-        self.update_points_for_year(current_year)
-        self.event_panel.update_event(current_year)
+        # Первоначальный год
+        self.current_year = self.timeline.value()
+        self.update_year_view(self.current_year)
 
         self.reposition_widgets()
+        self.event_panel.raise_()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -68,8 +63,12 @@ class MainWindow(QMainWindow):
         ep_y = self.height() - self.event_panel.height() - 40
         self.event_panel.move(ep_x, ep_y)
 
-    def update_points_for_year(self, year):
+    def update_year_view(self, year):
+        self.current_year = year
+        self.map_view.update_year(year)
         self.map_view.show_points_for_year(year, self.points_of_interest)
+        self.event_panel.update_event(year)  # только список, не детали
 
-    def on_marker_clicked(self, event_id):
+    def on_marker_clicked(self, event_id: str):
+        print(f"[DEBUG] Marker clicked: {event_id}")
         self.event_panel.show_details_by_id(event_id)

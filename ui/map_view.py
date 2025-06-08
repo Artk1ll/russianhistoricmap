@@ -1,8 +1,9 @@
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsPolygonItem, QGraphicsEllipseItem
 from PyQt5.QtGui import QPixmap, QPolygonF, QPen, QPainter, QBrush, QColor
-from PyQt5.QtCore import Qt, QPointF, pyqtSignal
+from PyQt5.QtCore import Qt, QPointF, pyqtSignal, QRectF
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
+
 
 class HoverablePolygonItem(QGraphicsPolygonItem):
     def __init__(self, polygon, normal_pen, hover_pen):
@@ -20,28 +21,52 @@ class HoverablePolygonItem(QGraphicsPolygonItem):
         self.setPen(self.normal_pen)
         super().hoverLeaveEvent(event)
 
+
+class ClickableEllipseItem(QGraphicsEllipseItem):
+    def __init__(self, rect, event_id, click_callback):
+        super().__init__(rect)
+        self.event_id = event_id
+        self.click_callback = click_callback
+
+        self.setAcceptHoverEvents(True)
+        self.setAcceptedMouseButtons(Qt.LeftButton)
+
+        self.setFlag(QGraphicsEllipseItem.ItemIsSelectable, True)
+        self.setFlag(QGraphicsEllipseItem.ItemIsFocusable, True)
+        self.setZValue(9999)  # всегда поверх
+
+    def mousePressEvent(self, event):
+        print(f"[DEBUG] Marker clicked: {self.event_id}")  # для проверки
+        if self.click_callback:
+            self.click_callback(self.event_id)
+        super().mousePressEvent(event)
+
+
 class MapView(QGraphicsView):
     markerClicked = pyqtSignal(str)
+
     def __init__(self, borders_by_year):
         super().__init__()
 
         self.raw_borders_by_year = borders_by_year
         self.original_size = (1920, 1080)
-
         self.points = []
 
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
 
+        self.setInteractive(True)
+        self.setMouseTracking(True)
         self.setRenderHint(QPainter.Antialiasing)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setTransformationAnchor(QGraphicsView.NoAnchor)
         self.setResizeAnchor(QGraphicsView.NoAnchor)
-
         self.setStyleSheet("background-color: black; border: none;")
+
         self.bg_pixmap = QPixmap("assets/Airbrush-Image-Enhancer-1748799855806.jpeg")
         self.bg_item = QGraphicsPixmapItem(self.bg_pixmap)
+        self.bg_item.setZValue(-1000)  # всегда позади
         self.scene.addItem(self.bg_item)
 
         self.current_items = []
@@ -144,7 +169,6 @@ class MapView(QGraphicsView):
                 self.draw_poly_outline(qpoly, main_color=Qt.black, outline_color=Qt.lightGray, z=3)
 
     def wheelEvent(self, event):
-        # Отключить реакцию на колесо мыши (чтобы карта не прокручивалась)
         event.ignore()
 
     def show_points_for_year(self, year, points):
@@ -152,6 +176,7 @@ class MapView(QGraphicsView):
         for point in points:
             if point["year"] == year:
                 self.add_interest_point(point["coordinates"], point["id"])
+        self.scene.setSceneRect(self.scene.itemsBoundingRect())  # обновить границы
 
     def clear_points(self):
         for item in self.points:
@@ -161,15 +186,10 @@ class MapView(QGraphicsView):
     def add_interest_point(self, coordinates, event_id):
         x, y = self.scale_coords([coordinates])[0]
         radius = 8
-        circle = QGraphicsEllipseItem(x - radius / 2, y - radius / 2, radius, radius)
+        rect = QRectF(x - radius / 2, y - radius / 2, radius, radius)
+
+        circle = ClickableEllipseItem(rect, event_id, self.markerClicked.emit)
         circle.setBrush(QBrush(Qt.red))
         circle.setPen(QPen(Qt.black))
-        circle.setZValue(10)
-        circle.setData(0, event_id)
-
-        def mousePressEvent(event, eid=event_id):
-            self.markerClicked.emit(eid)
-
-        circle.mousePressEvent = mousePressEvent
         self.scene.addItem(circle)
         self.points.append(circle)

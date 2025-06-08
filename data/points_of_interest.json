@@ -1,12 +1,107 @@
 [
   {
-    "id": "battle_borodino",
+    "id": "prizvanie_varyagov",
     "year": 862,
     "coordinates": [400, 400]
   },
   {
-    "id": "fire_moscow",
+    "id": "kreshchenie_rusi",
+    "year": 988,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "vzyatie_kieva_mongolami",
+    "year": 1240,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "moskovskoe_knyazhestvo",
+    "year": 1263,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "kulikovskaya_bitva",
+    "year": 1380,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "moskva_vs_novgorod",
+    "year": 1477,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "ugra_standoff",
+    "year": 1480,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "prisoyedinenie_vyatki",
+    "year": 1489,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "vzyatie_kazani",
+    "year": 1552,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "astrakhanskoe_hanstvo",
+    "year": 1556,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "pokhod_ermaka",
+    "year": 1581,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "osvobozhdenie_moskvy",
+    "year": 1612,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "sibir_i_dv",
+    "year": 1649,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "poltava",
+    "year": 1709,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "nishtadtskiy_mir",
+    "year": 1721,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "alyaska",
+    "year": 1741,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "zakavkazye",
+    "year": 1800,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "otechestvennaya_vojna",
     "year": 1812,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "fevralskaya_revolyutsiya",
+    "year": 1917,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "pobeda_vo_voyne",
+    "year": 1945,
+    "coordinates": [400, 400]
+  },
+  {
+    "id": "raspad_sssr",
+    "year": 1991,
     "coordinates": [400, 400]
   }
 ]
