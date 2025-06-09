@@ -35,12 +35,16 @@ class MainWindow(QMainWindow):
         # Панель событий
         self.event_panel = EventPanel(self.events_by_year, self)
         self.event_panel.setFixedWidth(300)
-        self.event_panel.setFixedHeight(180)
+        self.event_panel.setFixedHeight(350)
         self.event_panel.show()
 
         # Сигналы
         self.timeline.yearChanged.connect(self.update_year_view)
         self.map_view.markerClicked.connect(self.on_marker_clicked)
+
+        # 🔽 Добавленные сигналы для поиска
+        self.event_panel.year_selected.connect(self.timeline.set_value)
+        self.event_panel.year_selected.connect(self.update_year_view)
 
         # Первоначальный год
         self.current_year = self.timeline.value()
