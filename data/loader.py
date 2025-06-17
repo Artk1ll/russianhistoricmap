@@ -3,7 +3,23 @@ import json
 def load_borders(path="data/borders.json"):
     with open(path, "r", encoding="utf-8") as f:
         raw = json.load(f)
-    return {int(year): polys for year, polys in raw.items()}  # здесь можно оставить int
+
+    borders_by_year = {}
+    departing_by_year = {}
+
+    for year, polys in raw.items():
+        if year.startswith("_"):
+            try:
+                departing_by_year[int(year[1:])] = polys
+            except ValueError:
+                continue
+        else:
+            try:
+                borders_by_year[int(year)] = polys
+            except ValueError:
+                continue
+
+    return borders_by_year, departing_by_year
 
 def load_events(path="data/events.json"):
     with open(path, "r", encoding="utf-8") as f:

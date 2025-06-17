@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsPolygonItem, QGraphicsEllipseItem
+from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsPolygonItem
 from PyQt5.QtGui import QPixmap, QPolygonF, QPen, QPainter, QBrush, QColor
 from PyQt5.QtCore import Qt, QPointF, pyqtSignal, QRectF
 from shapely.geometry import Polygon
@@ -22,33 +22,14 @@ class HoverablePolygonItem(QGraphicsPolygonItem):
         super().hoverLeaveEvent(event)
 
 
-class ClickableEllipseItem(QGraphicsEllipseItem):
-    def __init__(self, rect, event_id, click_callback):
-        super().__init__(rect)
-        self.event_id = event_id
-        self.click_callback = click_callback
-
-        self.setAcceptHoverEvents(True)
-        self.setAcceptedMouseButtons(Qt.LeftButton)
-
-        self.setFlag(QGraphicsEllipseItem.ItemIsSelectable, True)
-        self.setFlag(QGraphicsEllipseItem.ItemIsFocusable, True)
-        self.setZValue(9999)  # всегда поверх
-
-    def mousePressEvent(self, event):
-        print(f"[DEBUG] Marker clicked: {self.event_id}")  # для проверки
-        if self.click_callback:
-            self.click_callback(self.event_id)
-        super().mousePressEvent(event)
-
-
 class MapView(QGraphicsView):
     markerClicked = pyqtSignal(str)
 
-    def __init__(self, borders_by_year):
+    def __init__(self, borders_by_year, departing_borders_by_year):
         super().__init__()
 
         self.raw_borders_by_year = borders_by_year
+        self.departing_borders_by_year = departing_borders_by_year
         self.original_size = (1920, 1080)
         self.points = []
 
@@ -66,7 +47,7 @@ class MapView(QGraphicsView):
 
         self.bg_pixmap = QPixmap("assets/Airbrush-Image-Enhancer-1748799855806.jpeg")
         self.bg_item = QGraphicsPixmapItem(self.bg_pixmap)
-        self.bg_item.setZValue(-1000)  # всегда позади
+        self.bg_item.setZValue(-1000)
         self.scene.addItem(self.bg_item)
 
         self.current_items = []
@@ -123,24 +104,18 @@ class MapView(QGraphicsView):
         for y in sorted(self.raw_borders_by_year.keys()):
             if int(y) < int(year):
                 for coords in self.raw_borders_by_year[y]:
-                    if len(coords) < 3:
-                        continue
-                    poly = Polygon(self.scale_coords(coords))
-                    if not poly.is_valid:
-                        poly = poly.buffer(0)
-                    if poly.is_valid and not poly.is_empty:
-                        past_polygons.append(poly)
+                    if len(coords) >= 3:
+                        poly = Polygon(self.scale_coords(coords))
+                        if poly.is_valid:
+                            past_polygons.append(poly)
         past_union = unary_union(past_polygons) if past_polygons else None
 
         current_polygons = []
         for coords in self.raw_borders_by_year.get(year, []):
-            if len(coords) < 3:
-                continue
-            poly = Polygon(self.scale_coords(coords))
-            if not poly.is_valid:
-                poly = poly.buffer(0)
-            if poly.is_valid and not poly.is_empty:
-                current_polygons.append(poly)
+            if len(coords) >= 3:
+                poly = Polygon(self.scale_coords(coords))
+                if poly.is_valid:
+                    current_polygons.append(poly)
         current_union = unary_union(current_polygons) if current_polygons else None
 
         if past_union:
@@ -153,13 +128,24 @@ class MapView(QGraphicsView):
                 diff = poly.difference(past_union)
                 geometries = diff.geoms if hasattr(diff, "geoms") else [diff]
                 for g in geometries:
-                    if not isinstance(g, Polygon) or not g.is_valid or g.is_empty:
-                        continue
-                    qpoly = QPolygonF([QPointF(x, y) for x, y in g.exterior.coords])
+                    if isinstance(g, Polygon) and g.is_valid:
+                        qpoly = QPolygonF([QPointF(x, y) for x, y in g.exterior.coords])
+                        item = QGraphicsPolygonItem(qpoly)
+                        item.setPen(QPen(Qt.green, 2, Qt.DashLine))
+                        item.setBrush(QBrush(Qt.green, Qt.Dense4Pattern))
+                        item.setZValue(2.5)
+                        self.scene.addItem(item)
+                        self.current_items.append(item)
+
+        for coords in self.departing_borders_by_year.get(year, []):
+            if len(coords) >= 3:
+                poly = Polygon(self.scale_coords(coords))
+                if poly.is_valid:
+                    qpoly = QPolygonF([QPointF(x, y) for x, y in poly.exterior.coords])
                     item = QGraphicsPolygonItem(qpoly)
-                    item.setPen(QPen(Qt.green, 2, Qt.DashLine))
-                    item.setBrush(QBrush(Qt.green, Qt.Dense4Pattern))
-                    item.setZValue(2.5)
+                    item.setPen(QPen(Qt.red, 2, Qt.DashLine))
+                    item.setBrush(QBrush(Qt.red, Qt.Dense4Pattern))
+                    item.setZValue(2.6)
                     self.scene.addItem(item)
                     self.current_items.append(item)
 
@@ -175,21 +161,44 @@ class MapView(QGraphicsView):
         self.clear_points()
         for point in points:
             if point["year"] == year:
-                self.add_interest_point(point["coordinates"], point["id"])
-        self.scene.setSceneRect(self.scene.itemsBoundingRect())  # обновить границы
+                self.add_interest_point(point["coordinates"], point["id"], point.get("type", "important"))
+        self.scene.setSceneRect(self.scene.itemsBoundingRect())
 
     def clear_points(self):
         for item in self.points:
             self.scene.removeItem(item)
         self.points.clear()
 
-    def add_interest_point(self, coordinates, event_id):
-        x, y = self.scale_coords([coordinates])[0]
-        radius = 8
-        rect = QRectF(x - radius / 2, y - radius / 2, radius, radius)
+    def add_interest_point(self, coordinates, event_id, event_type="important"):
+        icon_map = {
+            "battle": "assets/icons/battle.png",
+            "treaty": "assets/icons/treaty.png",
+            "important": "assets/icons/important.png"
+        }
+        icon_path = icon_map.get(event_type, icon_map["important"])
 
-        circle = ClickableEllipseItem(rect, event_id, self.markerClicked.emit)
-        circle.setBrush(QBrush(Qt.red))
-        circle.setPen(QPen(Qt.black))
-        self.scene.addItem(circle)
-        self.points.append(circle)
+        x, y = self.scale_coords([coordinates])[0]
+
+        # Тень
+        shadow = QGraphicsPixmapItem()
+        shadow.setPixmap(QPixmap(icon_path).scaled(20, 20, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        shadow.setOffset(-10 + 2, -10 + 2)
+        shadow.setZValue(9998)
+        shadow.setOpacity(0.4)
+        shadow.setPos(x, y)
+        self.scene.addItem(shadow)
+        self.points.append(shadow)
+
+        # Иконка
+        icon = QGraphicsPixmapItem()
+        icon.setPixmap(QPixmap(icon_path).scaled(20, 20, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        icon.setOffset(-10, -10)
+        icon.setZValue(9999)
+        icon.setPos(x, y)
+        icon.setData(0, event_id)
+        self.scene.addItem(icon)
+        self.points.append(icon)
+
+        def handle_click(event):
+            self.markerClicked.emit(event_id)
+        icon.mousePressEvent = handle_click

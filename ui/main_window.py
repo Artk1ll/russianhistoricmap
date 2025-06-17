@@ -11,8 +11,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Историческая карта России")
         self.setGeometry(100, 100, 1280, 800)
 
-        # Загрузка данных
-        self.borders_by_year = load_borders()
+        # Загрузка данных (две части: обычные границы и исчезающие)
+        self.borders_by_year, self.departing_by_year = load_borders()
         self.events_by_year = load_events()
         self.points_of_interest = load_points_of_interest()
 
@@ -22,8 +22,8 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(self.central)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Карта
-        self.map_view = MapView(self.borders_by_year)
+        # Карта (передаём оба словаря)
+        self.map_view = MapView(self.borders_by_year, self.departing_by_year)
         layout.addWidget(self.map_view)
 
         # Таймлайн
@@ -41,8 +41,6 @@ class MainWindow(QMainWindow):
         # Сигналы
         self.timeline.yearChanged.connect(self.update_year_view)
         self.map_view.markerClicked.connect(self.on_marker_clicked)
-
-        # 🔽 Добавленные сигналы для поиска
         self.event_panel.year_selected.connect(self.timeline.set_value)
         self.event_panel.year_selected.connect(self.update_year_view)
 
@@ -71,7 +69,7 @@ class MainWindow(QMainWindow):
         self.current_year = year
         self.map_view.update_year(year)
         self.map_view.show_points_for_year(year, self.points_of_interest)
-        self.event_panel.update_event(year)  # только список, не детали
+        self.event_panel.update_event(year)
 
     def on_marker_clicked(self, event_id: str):
         print(f"[DEBUG] Marker clicked: {event_id}")
