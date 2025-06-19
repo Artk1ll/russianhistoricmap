@@ -105,7 +105,7 @@ class MapView(QGraphicsView):
             if int(y) < int(year):
                 for coords in self.raw_borders_by_year[y]:
                     if len(coords) >= 3:
-                        poly = Polygon(self.scale_coords(coords))
+                        poly = Polygon(self.scale_coords(coords)).buffer(0)
                         if poly.is_valid:
                             past_polygons.append(poly)
         past_union = unary_union(past_polygons) if past_polygons else None
@@ -113,7 +113,7 @@ class MapView(QGraphicsView):
         current_polygons = []
         for coords in self.raw_borders_by_year.get(year, []):
             if len(coords) >= 3:
-                poly = Polygon(self.scale_coords(coords))
+                poly = Polygon(self.scale_coords(coords)).buffer(0)
                 if poly.is_valid:
                     current_polygons.append(poly)
         current_union = unary_union(current_polygons) if current_polygons else None
@@ -139,7 +139,7 @@ class MapView(QGraphicsView):
 
         for coords in self.departing_borders_by_year.get(year, []):
             if len(coords) >= 3:
-                poly = Polygon(self.scale_coords(coords))
+                poly = Polygon(self.scale_coords(coords)).buffer(0)
                 if poly.is_valid:
                     qpoly = QPolygonF([QPointF(x, y) for x, y in poly.exterior.coords])
                     item = QGraphicsPolygonItem(qpoly)
